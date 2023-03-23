@@ -1,6 +1,9 @@
+import os.path
+
 from torch_geometric.data import DataLoader
 from utils.CustomDataSet import SelectGraph
 from utils.train_utils import train_cp
+from utils.nb201_dataset_pg_ae import Dataset
 import torch
 import argparse
 
@@ -12,11 +15,12 @@ def main(arg):
     batch_size = arg.batch
 
     SelectGraph.data_name = args.d
-    data_set = SelectGraph('data/' + SelectGraph.data_name)
+
+    data_set = Dataset(hp='200', nb201_seed=777)
     input_size = data_set.num_features
     shapes = list(map(int, arg.shapes.split(",")))
-    train_set = DataLoader(data_set[:arg.n_train], batch_size=batch_size, shuffle=True)
-    test_set = DataLoader(data_set[arg.n_train:arg.n_train + arg.n_test], batch_size=batch_size, shuffle=False)
+    train_set = DataLoader(data_set.train_data[:arg.n_train], batch_size=batch_size, shuffle=True)
+    test_set = DataLoader(data_set.test_data[:arg.n_test], batch_size=batch_size, shuffle=False)
 
     if arg.m == "MIAGAE":
         from classification.Graph_AE import Net
@@ -40,15 +44,15 @@ def main(arg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Global_Dict generator')
-    parser.add_argument('--d', type=str, default='FRANKENSTEIN', help="dataset name")
+    parser.add_argument('--d', type=str, default='nb201_train', help="dataset name")
     parser.add_argument('--m', type=str, default='MIAGAE', help="model name")
     parser.add_argument('--device', type=str, default='cuda', help="cuda / cpu")
     parser.add_argument('--batch', type=int, default=512, help="batch size")
     parser.add_argument('--e', type=int, default=100, help="number of epochs")
     parser.add_argument('--lr', type=float, default=1e-3, help="learning rate")
     parser.add_argument('--model_dir', type=str, default="data/model/", help="path to save model")
-    parser.add_argument('--n_train', type=int, default=3000, help="number of samples for train set")
-    parser.add_argument('--n_test', type=int, default=1000, help="number of samples for test set")
+    parser.add_argument('--n_train', type=int, default=14062, help="number of samples for train set")
+    parser.add_argument('--n_test', type=int, default=1563, help="number of samples for test set")
     parser.add_argument('--k', type=int, default=2, help="number of kernels")
     parser.add_argument('--depth', type=int, default=3, help="depth of encoder and decoder")
     parser.add_argument('--c_rate', type=float, default=0.8, help="compression ratio for each layer of encoder")
