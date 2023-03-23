@@ -44,7 +44,7 @@ def main(arg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Global_Dict generator')
-    parser.add_argument('--d', type=str, default='nb201_train', help="dataset name")
+    #parser.add_argument('--d', type=str, default='nb201_train', help="dataset name")
     parser.add_argument('--m', type=str, default='MIAGAE', help="model name")
     parser.add_argument('--device', type=str, default='cuda', help="cuda / cpu")
     parser.add_argument('--batch', type=int, default=512, help="batch size")

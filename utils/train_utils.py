@@ -96,3 +96,35 @@ def train_cf(model, optimizer, device, train_set, valid_set, num_epoch, group1, 
         accuracy /= total_num
 
         print('Test Accuracy:', accuracy)
+
+
+def train_rg(model, optimizer, device, train_set, valid_set, num_epoch, group1, group2):
+
+    for e in range(num_epoch):
+        total_num = 0
+        for data in train_set:
+            optimizer.zero_grad()
+            data = data.to(device)
+            model.training = True
+            c = model(group1[0], group1[1], group1[2])
+            label = data.valid_acc
+
+            total_num += label.shape[0]
+            loss = torch.nn.MSELoss()(c, label)
+            loss.backward()
+            optimizer.step()
+
+        print()
+        print('Epoch: {:03d}'.format(e))
+        print('Train Loss:', loss.item())
+
+        total_num = 0
+        for data in valid_set:
+            data = data.to(device)
+            model.training = False
+            c = model(group2[0], group2[1], group2[2])
+            label = data.valid_acc
+            total_num += label.shape[0]
+            loss = torch.nn.MSELoss()(c, label)
+
+        print('Test Loss:', loss.item())
