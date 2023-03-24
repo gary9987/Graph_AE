@@ -54,8 +54,7 @@ class Regressor(torch.nn.Module):
         self.dim_target = dim_target
 
         self.conv1 = SAGEConv(input_size, input_size // 2)
-        self.conv2 = SAGEConv(input_size // 2, input_size // 2)
-        self.conv3 = SAGEConv(input_size // 2, input_size // 2)
+
         h_size = input_size // 2
         self.lin_layers = torch.nn.ModuleList(
             [nn.Linear(h_size // (2 ** num), h_size // (2 ** (num + 1))) for num in range(self.num_layers - 1)])
@@ -63,8 +62,6 @@ class Regressor(torch.nn.Module):
 
     def forward(self, x, edge_index, batch):
         x1 = self.conv1(x, edge_index)
-        x1 = self.conv2(x1, edge_index)
-        x1 = self.conv3(x1, edge_index)
         h = global_mean_pool(x1, batch)
 
         for layer in self.lin_layers[:-1]:

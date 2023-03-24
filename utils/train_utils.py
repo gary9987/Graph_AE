@@ -1,6 +1,7 @@
+import numpy as np
 import torch
 import os
-
+from utils.metrics import get_final_epoch_kt, get_final_epoch_r2
 
 def load_model_result(model, train_set, test_set, device):
     x1, e1, batch1 = None, None, None
@@ -98,33 +99,77 @@ def train_cf(model, optimizer, device, train_set, valid_set, num_epoch, group1, 
         print('Test Accuracy:', accuracy)
 
 
-def train_rg(model, optimizer, device, train_set, valid_set, num_epoch, group1, group2):
+def train_rg(ae_model, model, optimizer, device, train_set, valid_set, test_set, num_epoch):
 
     for e in range(num_epoch):
         total_num = 0
+        total_loss = 0
+        model.train()
+        ae_model.train()
         for data in train_set:
             optimizer.zero_grad()
             data = data.to(device)
-            model.training = True
-            c = model(group1[0], group1[1], group1[2])
+            _, x1, e1, batch1 = ae_model(data)
+            c = model(x1, e1, batch1)
             label = data.valid_acc
 
             total_num += label.shape[0]
-            loss = torch.nn.MSELoss()(c, label)
+            loss = torch.nn.MSELoss()(c.squeeze(), label)
+            total_loss += loss.item() * label.shape[0]
             loss.backward()
             optimizer.step()
 
-        print()
         print('Epoch: {:03d}'.format(e))
-        print('Train Loss:', loss.item())
+        print('Train Loss:', total_loss / total_num)
 
         total_num = 0
-        for data in valid_set:
+        total_loss = 0
+        pred_list = []
+        label_list = []
+        model.eval()
+        ae_model.eval()
+        with torch.no_grad():
+            for data in valid_set:
+                data = data.to(device)
+                _, x1, e1, batch1 = ae_model(data)
+                c = model(x1, e1, batch1)
+                label = data.valid_acc
+                total_num += label.shape[0]
+                loss = torch.nn.MSELoss()(c.squeeze(), label)
+                total_loss += loss.item() * label.shape[0]
+                pred_list.extend(c.cpu().numpy())
+                label_list.extend(label.cpu().numpy())
+
+            pred_list = np.array(pred_list)
+            label_list = np.expand_dims(np.array(label_list), -1)
+            print('Valid Loss:', total_loss / total_num)
+            print('Valid KT', get_final_epoch_kt(pred_list.tolist(), label_list.tolist()))
+            print('Valid R2', get_final_epoch_r2(pred_list.tolist(), label_list.tolist()))
+
+    print('Testing')
+    total_num = 0
+    total_loss = 0
+    pred_list = []
+    label_list = []
+    model.eval()
+    ae_model.eval()
+    with torch.no_grad():
+        for data in test_set:
             data = data.to(device)
-            model.training = False
-            c = model(group2[0], group2[1], group2[2])
+            _, x1, e1, batch1 = ae_model(data)
+            c = model(x1, e1, batch1)
+
             label = data.valid_acc
             total_num += label.shape[0]
-            loss = torch.nn.MSELoss()(c, label)
+            loss = torch.nn.MSELoss()(c.squeeze(), label)
+            total_loss += loss.item() * label.shape[0]
 
-        print('Test Loss:', loss.item())
+            pred_list.extend(c.cpu().numpy())
+            label_list.extend(label.cpu().numpy())
+
+        pred_list = np.array(pred_list)
+        label_list = np.expand_dims(np.array(label_list), -1)
+
+        print('Test Loss:', total_loss / total_num)
+        print('Test KT', get_final_epoch_kt(pred_list.tolist(), label_list.tolist()))
+        print('Test R2', get_final_epoch_r2(pred_list.tolist(), label_list.tolist()))
